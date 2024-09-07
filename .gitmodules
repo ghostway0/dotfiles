@@ -1,0 +1,3 @@
+[submodule "leftwm-linux/.config/leftwm/themes/Ascent"]
+	path = leftwm-linux/.config/leftwm/themes/Ascent
+	url = https://gitlab.com/mWalrus/ascent.git

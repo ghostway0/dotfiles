@@ -1,0 +1,3 @@
+creation_rules:
+- filename_regex: rclone.conf
+  encrypted_regex: "account|key"
