@@ -38,7 +38,7 @@ bindkey '\eb' backward-word
 
 bindkey '^R' history-incremental-search-backward
 
-alias send_keystore='rclone sync ~/.key-store/ backblaze:key-store'
-alias recv_keystore='rclone sync backblaze:key-store ~/.key-store/ '
+alias send_keystore='rclone sync ~/.key-store/ backblaze:key-store && ~/.cargo/bin/paq ~/.key-store'
+alias recv_keystore='rclone sync backblaze:key-store ~/.key-store/ && ~/.cargo/bin/paq ~/.key-store'
 
 export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/ssh-agent.socket"

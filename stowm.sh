@@ -5,6 +5,7 @@ DRY_RUN=false
 BACKUP=true
 TARGET_DIR=""
 COMMAND=""
+PACKAGES=()
 
 INFO="\033[1;34m[INFO]\033[0m"
 WARN="\033[1;33m[WARN]\033[0m"
@@ -34,6 +35,10 @@ while [[ "$1" != "" ]]; do
         --platform)
             shift
             PLATFORM="$1"
+            ;;
+        --packages)
+            shift
+            IFS=',' read -r -a PACKAGES <<< "$1"
             ;;
         *)
             TARGET_DIR="$1"
@@ -74,33 +79,37 @@ backup_file() {
 install_files() {
     export SOPS_AGE_KEY_FILE=/dev/stdin
 
+    echo "filtering for $PLATFORM"
+
     for dir in */; do
         if [[ -d "$dir" ]]; then
             if [[ "$dir" == *-$PLATFORM/ || "$dir" != *-*/ ]]; then
-                echo -e "$dir"
+                if [[ ${#PACKAGES[@]} -eq 0 || " ${PACKAGES[@]} " =~ " $(basename "$dir") " ]]; then
+                    echo -e "$dir"
 
-                find "$dir" -type f -name '*.sopsenc*' | while read -r enc_file; do
-                    decrypted_file="${enc_file%.sopsenc*}"
-                    temp_file=$(mktemp)
+                    find "$dir" -type f -name '*.sopsenc*' | while read -r enc_file; do
+                        decrypted_file="${enc_file%.sopsenc*}"
+                        temp_file=$(mktemp)
 
-                    echo "$AGE_KEY" | sops --input-type json --decrypt "$enc_file" > "$temp_file"
+                        echo "$AGE_KEY" | sops --input-type json --decrypt "$enc_file" > "$temp_file"
 
-                    if [[ -f "$decrypted_file" && $BACKUP == true ]]; then
-                        backup_file "$decrypted_file" "$temp_file"
-                    fi
+                        if [[ -f "$decrypted_file" && $BACKUP == true ]]; then
+                            backup_file "$decrypted_file" "$temp_file"
+                        fi
+
+                        if ! $DRY_RUN; then
+                            echo "$decrypted_file <~ $enc_file"
+                            mv "$temp_file" "$decrypted_file"
+                        else
+                            rm "$temp_file"
+                        fi
+                    done
 
                     if ! $DRY_RUN; then
-                        echo "$decrypted_file <~ $enc_file"
-                        mv "$temp_file" "$decrypted_file"
-                    else
-                        rm "$temp_file"
-                    fi
-                done
-
-                if ! $DRY_RUN; then
-                    if ! stow "$dir" -t "$TARGET_DIR"; then
-                        echo -e "$ERROR Failed to stow $dir"
-                        exit 1
+                        if ! stow "$dir" -t "$TARGET_DIR"; then
+                            echo -e "$ERROR Failed to stow $dir"
+                            exit 1
+                        fi
                     fi
                 fi
             fi
@@ -112,21 +121,25 @@ install_files() {
 update_files() {
     echo -e "$AGE_KEY"
 
+    echo "filtering for $PLATFORM"
+
     for dir in */; do
         if [[ -d "$dir" ]]; then
             if [[ "$dir" == *-$PLATFORM/ || "$dir" != *-*/ ]]; then
-                find "$dir" -type f ! -name '*.sopsenc*' | while read -r orig_file; do
-                    file_type=$(find "$dir" -type f -name "$(basename "$orig_file").sopsenc.*" | grep -o '\.\w\+$')
+                if [[ ${#PACKAGES[@]} -eq 0 || " ${PACKAGES[@]} " =~ " $(basename "$dir") " ]]; then
+                    find "$dir" -type f ! -name '*.sopsenc*' | while read -r orig_file; do
+                        file_type=$(find "$dir" -type f -name "$(basename "$orig_file").sopsenc.*" | grep -o '\.\w\+$')
 
-                    if [[ -n "$file_type" ]]; then
-                        encrypted_file="${orig_file}.sopsenc$file_type"
-                        echo -e "$orig_file ~> $encrypted_file"
+                        if [[ -n "$file_type" ]]; then
+                            encrypted_file="${orig_file}.sopsenc$file_type"
+                            echo -e "$orig_file ~> $encrypted_file"
 
-                        if ! $DRY_RUN; then
-                            echo "$AGE_KEY" | sops --age $(</dev/stdin) --encrypt --input-type="${file_type#.}" "$orig_file" > "$encrypted_file"
+                            if ! $DRY_RUN; then
+                                echo "$AGE_KEY" | sops --age $(</dev/stdin) --encrypt --input-type="${file_type#.}" "$orig_file" > "$encrypted_file"
+                            fi
                         fi
-                    fi
-                done
+                    done
+                fi
             fi
         fi
     done
@@ -159,6 +172,6 @@ case "$COMMAND" in
         update_files
         ;;
     *)
-        echo -e "$ERROR Usage: $0 {install|update} --platform <platform> [target_dir] [--dry-run|--no-backup]"
+        echo -e "$ERROR Usage: $0 {install|update} --platform <platform> [target_dir] [--dry-run|--no-backup] [--packages package1,package2]"
         ;;
 esac
