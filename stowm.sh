@@ -6,12 +6,13 @@ BACKUP=true
 TARGET_DIR=""
 COMMAND=""
 PACKAGES=()
+EXCLUDE=()
 
 INFO="\033[1;34m[INFO]\033[0m"
 WARN="\033[1;33m[WARN]\033[0m"
 ERROR="\033[1;31m[ERROR]\033[0m"
 
-HELP="Usage: $0 {install|update} --platform <platform> [target_dir] [--dry-run] [--no-backup] [--packages package1,package2]"
+HELP="Usage: $0 {install|update} --platform <platform> [target_dir] [--dry-run] [--no-backup] [--packages package1,package2] [--exclude exclude1,exclude2]"
 
 if ! command -v sops &> /dev/null; then
     echo -e "$ERROR sops not installed."
@@ -41,6 +42,10 @@ while [[ "$1" != "" ]]; do
         --packages)
             shift
             IFS=',' read -r -a PACKAGES <<< "$1"
+            ;;
+        --exclude)
+            shift
+            IFS=',' read -r -a EXCLUDE <<< "$1"
             ;;
         *)
             TARGET_DIR="$1"
@@ -78,6 +83,16 @@ backup_file() {
     fi
 }
 
+is_excluded() {
+    local name="$1"
+    for exclude in "${EXCLUDE[@]}"; do
+        if [[ "$name" == *"$exclude"* ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 install_files() {
     export SOPS_AGE_KEY_FILE=/dev/stdin
 
@@ -85,11 +100,21 @@ install_files() {
 
     for dir in */; do
         if [[ -d "$dir" ]]; then
+            if is_excluded "$dir"; then
+                echo -e "skipped $dir"
+                continue
+            fi
+
             if [[ "$dir" == *-$PLATFORM/ || "$dir" != *-*/ ]]; then
                 if [[ ${#PACKAGES[@]} -eq 0 || " ${PACKAGES[@]} " =~ " $(basename "$dir") " ]]; then
                     echo -e "$dir"
 
                     find "$dir" -type f -name '*.sopsenc*' | while read -r enc_file; do
+                        if is_excluded "$enc_file"; then
+                            echo -e "$WARN Skipping excluded file $enc_file"
+                            continue
+                        fi
+
                         decrypted_file="${enc_file%.sopsenc*}"
                         temp_file=$(mktemp)
 
@@ -119,7 +144,6 @@ install_files() {
     done
 }
 
-
 update_files() {
     echo -e "$AGE_KEY"
 
@@ -127,9 +151,19 @@ update_files() {
 
     for dir in */; do
         if [[ -d "$dir" ]]; then
+            if is_excluded "$dir"; then
+                echo -e "$WARN Skipping excluded directory $dir"
+                continue
+            fi
+
             if [[ "$dir" == *-$PLATFORM/ || "$dir" != *-*/ ]]; then
                 if [[ ${#PACKAGES[@]} -eq 0 || " ${PACKAGES[@]} " =~ " $(basename "$dir") " ]]; then
                     find "$dir" -type f ! -name '*.sopsenc*' | while read -r orig_file; do
+                        if is_excluded "$orig_file"; then
+                            echo -e "$WARN Skipping excluded file $orig_file"
+                            continue
+                        fi
+
                         file_type=$(find "$dir" -type f -name "$(basename "$orig_file").sopsenc.*" | grep -o '\.\w\+$')
 
                         if [[ -n "$file_type" ]]; then
@@ -180,3 +214,4 @@ case "$COMMAND" in
         echo -e "$ERROR $HELP"
         ;;
 esac
+

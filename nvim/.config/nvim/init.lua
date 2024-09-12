@@ -21,6 +21,11 @@ require("lazy").setup({
     'tpope/vim-sleuth',
 
     {
+        'arnarg/todotxt.nvim',
+        dependencies = { 'MunifTanjim/nui.nvim' },
+    },
+
+    {
         'neovim/nvim-lspconfig',
         dependencies = {
             { 'williamboman/mason.nvim', config = true },
@@ -117,6 +122,7 @@ require('guess-indent').setup {}
 require('todo-comments').setup {}
 
 require 'gitsigns'.setup({})
+require 'todotxt-nvim'.setup({todo_file = "~/journal/todo.txt"})
 
 vim.cmd.colorscheme("catppuccin")
 
