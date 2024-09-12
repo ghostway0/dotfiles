@@ -11,6 +11,8 @@ INFO="\033[1;34m[INFO]\033[0m"
 WARN="\033[1;33m[WARN]\033[0m"
 ERROR="\033[1;31m[ERROR]\033[0m"
 
+HELP="Usage: $0 {install|update} --platform <platform> [target_dir] [--dry-run] [--no-backup] [--packages package1,package2]"
+
 if ! command -v sops &> /dev/null; then
     echo -e "$ERROR sops not installed."
     exit 1
@@ -171,7 +173,10 @@ case "$COMMAND" in
         echo
         update_files
         ;;
+    --help)
+        echo -e "$HELP"
+        ;;
     *)
-        echo -e "$ERROR Usage: $0 {install|update} --platform <platform> [target_dir] [--dry-run|--no-backup] [--packages package1,package2]"
+        echo -e "$ERROR $HELP"
         ;;
 esac

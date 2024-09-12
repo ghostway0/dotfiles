@@ -34,6 +34,12 @@ require("lazy").setup({
     { 'lewis6991/gitsigns.nvim' },
 
 
+    {
+        'jakobkhansen/journal.nvim',
+        config = function()
+            require("journal").setup()
+        end,
+    },
 
     { 'catppuccin/nvim',                     name = 'catppuccin' },
     { 'nvim-telescope/telescope-bibtex.nvim' },
@@ -217,7 +223,8 @@ vim.keymap.set('n', '<leader>sf', require('telescope.builtin').find_files, { des
 vim.keymap.set('n', '<leader>sm', require('telescope.builtin').man_pages, { desc = '[S]earch [M]an pages' })
 vim.keymap.set('n', '<leader>sh', require('telescope.builtin').help_tags, { desc = '[S]earch [H]elp' })
 vim.keymap.set('n', '<leader>sw', require('telescope.builtin').grep_string, { desc = '[S]earch current [W]ord' })
-vim.keymap.set('n', '<leader>sg', require('telescope').extensions.live_grep_args.live_grep_args, { desc = '[S]earch by [G]rep' })
+vim.keymap.set('n', '<leader>sg', require('telescope').extensions.live_grep_args.live_grep_args,
+    { desc = '[S]earch by [G]rep' })
 vim.keymap.set('n', '<leader>sG', ':LiveGrepGitRoot<cr>', { desc = '[S]earch by [G]rep on Git Root' })
 vim.keymap.set('n', '<leader>sd', require('telescope.builtin').diagnostics, { desc = '[S]earch [D]iagnostics' })
 vim.keymap.set('n', '<leader>sr', require('telescope.builtin').resume, { desc = '[S]earch [R]esume' })
@@ -230,12 +237,12 @@ vim.api.nvim_set_keymap('t', '<Esc><Esc>', '<C-\\><C-n>', { noremap = true, sile
 vim.api.nvim_set_keymap('t', '<C-W><C-W>', '<C-\\><C-n><C-W><C-W>', { noremap = true, silent = true })
 
 function highlight_current_window_temp()
-  local current_win = vim.api.nvim_get_current_win()
-  vim.api.nvim_win_set_option(current_win, 'winhighlight', 'Normal:Visual')
+    local current_win = vim.api.nvim_get_current_win()
+    vim.api.nvim_win_set_option(current_win, 'winhighlight', 'Normal:Visual')
 
-  vim.defer_fn(function()
-    vim.api.nvim_win_set_option(current_win, 'winhighlight', '')
-  end, 500)
+    vim.defer_fn(function()
+        vim.api.nvim_win_set_option(current_win, 'winhighlight', '')
+    end, 500)
 end
 
 vim.api.nvim_set_keymap('n', '<leader>wh', ':lua highlight_current_window_temp()<CR>', { noremap = true, silent = true })
@@ -467,4 +474,3 @@ cmp.setup {
         { name = "papis" },
     },
 }
-
