@@ -32,16 +32,17 @@ mkfs.ext4 /dev/mapper/encrypted_volume
 mount /dev/mapper/encrypted_volume $ENCRYPTED_MOUNT
 echo "/home ($DISK_SIZE) is encrypted, and now your home. good luck!"
 
-export HOME=/home
-cd /home
+export HOME=$ENCRYPTED_MOUNT
+cd $ENCRYPTED_MOUNT
 
 /bin/sh
 
 cd /
 
 echo "cleaning up..."
-umount $ENCRYPTED_MOUNT || echo "failed to unmount $ENCRYPTED_MOUNT."
-cryptsetup luksClose encrypted_volume || echo "failed to close encrypted volume."
-losetup -d /dev/loop0 || echo "failed to detach loop device."
-rm -f $ENCRYPTED_FILE || echo "failed to remove encrypted file."
-echo "encrypted volume cleaned up and deleted."
+umount $ENCRYPTED_MOUNT || (echo "failed to unmount $ENCRYPTED_MOUNT." && exit 1)
+cryptsetup luksClose encrypted_volume || (echo "failed to close encrypted volume." && exit 1)
+losetup -d /dev/loop0 || (echo "failed to detach loop device." && exit 1)
+rm -f $ENCRYPTED_FILE || (echo "failed to remove encrypted file." && exit 1)
+
+echo "success! your secrets are safe for one more day..."

@@ -1,0 +1,19 @@
+#! /bin/sh
+
+pushd ~/.config/docker/wiped
+
+rebuild=false
+for arg in "$@"; do
+    if [ "$arg" = "--rebuild" ]; then
+        rebuild=true
+    fi
+done
+
+if ! docker images | grep -q '^wiped ' || [ "$rebuild" = true ]; then
+    docker build -t wiped .
+fi
+
+docker-compose run wiped --rm
+docker-compose down --remove-orphans
+
+popd
