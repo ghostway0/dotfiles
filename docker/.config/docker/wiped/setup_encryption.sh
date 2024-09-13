@@ -24,7 +24,6 @@ dd if=/dev/zero of=$ENCRYPTED_FILE bs=1M count=100
 losetup /dev/loop0 $ENCRYPTED_FILE
 
 echo $KEY | cryptsetup luksFormat /dev/loop0 -d -
-
 echo $KEY | cryptsetup luksOpen /dev/loop0 encrypted_volume -d -
 
 mkfs.ext4 /dev/mapper/encrypted_volume
@@ -40,9 +39,9 @@ cd $ENCRYPTED_MOUNT
 cd /
 
 echo "cleaning up..."
-umount $ENCRYPTED_MOUNT || (echo "failed to unmount $ENCRYPTED_MOUNT." && exit 1)
-cryptsetup luksClose encrypted_volume || (echo "failed to close encrypted volume." && exit 1)
-losetup -d /dev/loop0 || (echo "failed to detach loop device." && exit 1)
-rm -f $ENCRYPTED_FILE || (echo "failed to remove encrypted file." && exit 1)
+umount $ENCRYPTED_MOUNT || { echo "failed to unmount $ENCRYPTED_MOUNT." && exit 1; }
+cryptsetup luksClose encrypted_volume || { echo "failed to close encrypted volume." && exit 1; }
+losetup -d /dev/loop0 || { echo "failed to detach loop device." && exit 1; }
+rm -f $ENCRYPTED_FILE || { echo "failed to remove encrypted file." && exit 1; }
 
 echo "success! your secrets are safe for one more day..."
