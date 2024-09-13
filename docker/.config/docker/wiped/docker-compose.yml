@@ -1,0 +1,9 @@
+services:
+  wiped:
+    image: wiped
+    shm_size: '256m'
+    tty: true
+    privileged: true
+    build:
+      dockerfile: Dockerfile
+
