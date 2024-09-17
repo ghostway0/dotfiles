@@ -1,9 +1,12 @@
 services:
   wiped:
     image: wiped
-    shm_size: '512m'
+    shm_size: '1G'
     tty: true
     privileged: true
     build:
       dockerfile: Dockerfile
-
+    volumes:
+      - wiper_volume:/mnt/wiper
+volumes:
+  wiper_volume:

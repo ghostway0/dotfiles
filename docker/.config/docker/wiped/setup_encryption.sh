@@ -2,7 +2,7 @@
 
 ENCRYPTED_FILE=/dev/shm/encrypted_disk.img
 ENCRYPTED_MOUNT=/home
-DISK_SIZE=256M
+DISK_SIZE=512M
 
 if losetup | grep '/dev/loop0' > /dev/null 2>&1; then
     echo "Cleaning up previous loop device /dev/loop0..."
