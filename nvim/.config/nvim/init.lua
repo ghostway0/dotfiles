@@ -20,6 +20,8 @@ require("lazy").setup({
     'folke/todo-comments.nvim',
     'tpope/vim-sleuth',
 
+    {'jbyuki/nabla.nvim'},
+
     {
         'neovim/nvim-lspconfig',
         dependencies = {
@@ -32,6 +34,8 @@ require("lazy").setup({
     },
     { 'tpope/vim-fugitive' },
     { 'lewis6991/gitsigns.nvim' },
+
+    {'Myzel394/easytables.nvim'},
 
 
     {
@@ -117,6 +121,8 @@ require('guess-indent').setup {}
 require('todo-comments').setup {}
 
 require 'gitsigns'.setup({})
+
+require("easytables").setup {}
 
 vim.cmd.colorscheme("catppuccin")
 
@@ -376,12 +382,12 @@ require('lspconfig.configs').superhtml = {
     }
 }
 
-require 'lsp-zero'.configure('superhtml', { force_setup = true })
+require 'lsp-zero'.configure('superhtml', { force_setup = true, cmd = { '/Users/ofek/sw/zine/zig-out/bin/server' }, })
 
 local servers = {
     clangd = { settings = {} },
     rust_analyzer = { settings = {} },
-    zls = { settings = {}, cmd = { '/home/ghostway/.zigup/current/zls' } },
+    zls = { settings = {}, cmd = { '/Users/ofek/.zigup/current/zls' } },
     marksman = {},
     verible = {},
     typst_lsp = { filetypes = { 'typst' } },
@@ -418,10 +424,13 @@ mason_lspconfig.setup_handlers {
     end,
 }
 
+vim.cmd [[ Copilot disable ]]
+
 vim.keymap.set('i', '<C-,>', 'copilot#Accept("\\<CR>")', {
     expr = true,
     replace_keycodes = false
 })
+
 vim.g.copilot_no_tab_map = true
 
 local cmp = require 'cmp'
