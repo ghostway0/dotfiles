@@ -114,10 +114,16 @@ require("lazy").setup({
         }
     },
 
-    { 'nmac427/guess-indent.nvim' },
+    { 'Darazaki/indent-o-matic' },
 }, {})
 
-require('guess-indent').setup {}
+-- require('guess-indent').setup {}
+require('indent-o-matic').setup {
+    max_lines = 2048,
+    standard_widths = { 2, 4 },
+    skip_multiline = true,
+}
+
 require('todo-comments').setup {}
 
 require 'gitsigns'.setup({})
@@ -373,6 +379,17 @@ vim.filetype.add({
     },
 })
 
+vim.filetype.add({
+    extension = {
+        vert = 'glsl',
+        frag = 'glsl',
+        geom = 'glsl',
+        comp = 'glsl',
+        tesc = 'glsl',
+        tese = 'glsl',
+    }
+})
+
 require('lspconfig.configs').superhtml = {
     default_config = {
         name = 'superhtml',
@@ -392,6 +409,9 @@ local servers = {
     verible = {},
     typst_lsp = { filetypes = { 'typst' } },
     mesonlsp = {},
+    glsl_ls = {
+        filetypes = { 'glsl', 'vert', 'frag', 'geom', 'comp', 'tesc', 'tese' }
+    },
 
     lua_ls = {
         settings = {
