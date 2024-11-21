@@ -1,7 +1,9 @@
 #! /bin/bash
 
 if [ ! -d "$HOME/.key-store/" ]; then
-  mkdir -p ~/.key-store
-  rclone sync backblaze:key-store ~/.key-store
+  mkdir "$HOME/.key-store"
+
+  systemctl --user enable rclone-keystore.service
+  systemctl --user start rclone-keystore.service
 fi
 

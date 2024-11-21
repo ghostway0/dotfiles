@@ -15,6 +15,8 @@ bindkey '^[F' forward-word
 bindkey '^[B' backward-word
 
 alias ls='eza -l'
+alias hash_keystore='~/.cargo/bin/paq ~/.key-store'
+alias rm='rm -I'
 
 export ZIGUP_BASEDIR=/Users/ofek/.zigup
 export PATH=/Users/ofek/.zigup/current:$PATH
@@ -37,10 +39,6 @@ bindkey '\ef' forward-word
 bindkey '\eb' backward-word
 
 bindkey '^R' history-incremental-search-backward
-
-alias send_keystore='rclone sync ~/.key-store/ backblaze:key-store'
-alias recv_keystore='rclone sync backblaze:key-store ~/.key-store/'
-alias hash_keystore='~/.cargo/bin/paq ~/.key-store'
 
 export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/ssh-agent.socket"
 

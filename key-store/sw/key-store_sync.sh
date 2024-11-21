@@ -1,3 +1,0 @@
-#! /bin/bash
-
-rclone sync 
