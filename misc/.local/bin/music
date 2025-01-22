@@ -1,0 +1,397 @@
+#!/bin/zsh
+
+SOCKET_PATH=/tmp/mpvsocket
+playlist_config_file="/tmp/musicplayer_playlist_path.txt"
+CURRENT_PLAYLIST=""
+
+if [[ -f "$playlist_config_file" ]]; then
+    CURRENT_PLAYLIST=$(cat "$playlist_config_file")
+    if [[ ! -f "$CURRENT_PLAYLIST" ]]; then
+        echo "Warning: Last playlist '$CURRENT_PLAYLIST' not found, resetting."
+        CURRENT_PLAYLIST=""
+        rm -f "$playlist_config_file"
+    fi
+fi
+
+check_dependencies() {
+    if ! command -v mpv >/dev/null || ! command -v socat >/dev/null || ! command -v jq >/dev/null; then
+        echo "Error: Missing dependencies (mpv, jq and socat). Please install them."
+        return 1
+    fi
+    return 0
+}
+
+is_playlist_set() {
+    [[ -z "$CURRENT_PLAYLIST" ]] && {
+        echo "Error: Playlist not set. Use 'music switch PATH'."
+        return 1
+    }
+    return 0
+}
+
+start_mpv() {
+    mpv --no-video --really-quiet --input-ipc-server="$SOCKET_PATH" --playlist="$1" &
+    sleep 0.1
+}
+
+get_mpv_property() {
+    local property=$1
+    local cmd='{"command": ["get_property", "'
+    local end='"]}'
+    echo "$cmd$property$end" | \
+        socat - ${SOCKET_PATH} 2>/dev/null | \
+        jq -r '.data'
+}
+
+switch_playlist() {
+    local playlist_path="$1"
+    [[ -z "$playlist_path" ]] && {
+        echo "Usage: music switch path/to/playlist.txt"
+        return 1
+    }
+    [[ ! -f "$playlist_path" ]] && {
+        echo "Playlist not found: $playlist_path"
+        return 1
+    }
+    [[ ! "$playlist_path" =~ \.txt$ ]] && {
+        echo "Error: Playlist path must end with '.txt'."
+        return 1
+    }
+
+    CURRENT_PLAYLIST="$playlist_path"
+    echo "Switched to playlist: $playlist_path"
+    printf "%s\n" "$CURRENT_PLAYLIST" > "$playlist_config_file"
+    stop_playback
+}
+
+ensure_player_running() {
+    if ! pgrep -f "mpv.*$SOCKET_PATH" >/dev/null; then
+        cleanup_tmp_files
+        is_playlist_set || return 1
+        awk -F' *\\| *' '{print $2}' "$CURRENT_PLAYLIST" | tr -d ' ' > /tmp/current_playlist.txt
+        start_mpv "/tmp/current_playlist.txt"
+    fi
+}
+
+list_songs() {
+    is_playlist_set || return 1
+    echo "Songs in $CURRENT_PLAYLIST:"
+    awk -F' *\\| *' '{print NR ". " $1}' "$CURRENT_PLAYLIST"
+}
+
+play_song() {
+    local search="$1"
+    [[ -z "$search" ]] && {
+        echo "Usage: music play NUM/LABEL"
+        list_songs
+        return 1
+    }
+    is_playlist_set || return 1
+
+    local url title
+    if [[ "$search" =~ ^[0-9]+$ ]]; then
+        url=$(awk -F' *\\| *' "NR==$search {print \$2}" "$CURRENT_PLAYLIST" | tr -d ' ')
+        title=$(awk -F' *\\| *' "NR==$search {print \$1}" "$CURRENT_PLAYLIST")
+    else
+        url=$(awk -F' *\\| *' "\$1 ~ /$search/ {print \$2; exit}" "$CURRENT_PLAYLIST" | tr -d ' ')
+        title=$(awk -F' *\\| *' "\$1 ~ /$search/ {print \$1; exit}" "$CURRENT_PLAYLIST")
+    fi
+
+    [[ -z "$url" ]] && {
+        echo "Song not found"
+        list_songs
+        return 1
+    }
+
+    if pgrep -f "mpv.*$SOCKET_PATH" >/dev/null; then
+        pkill -f "mpv.*$SOCKET_PATH"
+        sleep 0.1
+    fi
+
+    local tmp_playlist=/tmp/current_playlist.txt
+    if [[ "$search" =~ ^[0-9]+$ ]]; then
+        awk -F' *\\| *' -v start="$search" 'NR>=start {print $2}' "$CURRENT_PLAYLIST" | tr -d ' ' > "$tmp_playlist"
+        awk -F' *\\| *' -v start="$search" 'NR<start {print $2}' "$CURRENT_PLAYLIST" | tr -d ' ' >> "$tmp_playlist"
+    else
+        local line_num=$(awk -F' *\\| *' "\$1 ~ /$search/ {print NR; exit}" "$CURRENT_PLAYLIST")
+        awk -F' *\\| *' -v start="$line_num" 'NR>=start {print $2}' "$CURRENT_PLAYLIST" | tr -d ' ' > "$tmp_playlist"
+        awk -F' *\\| *' -v start="$line_num" 'NR<start {print $2}' "$CURRENT_PLAYLIST" | tr -d ' ' >> "$tmp_playlist"
+    fi
+
+    echo "Playing: $title"
+    start_mpv "$tmp_playlist"
+    echo "Use 'music live-status' for live playback display"
+}
+
+play_playlist() {
+    is_playlist_set || return 1
+    ensure_player_running
+    echo "Playlist started. Use other commands to control playback."
+    echo "Use 'music live-status' for live playback display"
+    list_songs
+}
+
+cleanup_tmp_files() {
+    rm -f /tmp/current_playlist.txt /tmp/shuffled_playlist.txt /tmp/shuffled_full.txt
+}
+
+setup_cleanup() {
+    trap cleanup_tmp_files EXIT
+}
+
+setup_cleanup
+
+shuffle_play() {
+    is_playlist_set || return 1
+    if pgrep -f "mpv.*$SOCKET_PATH" >/dev/null; then
+        pkill -f "mpv.*$SOCKET_PATH"
+        sleep 1
+    fi
+
+    cleanup_tmp_files
+    local shuffled_full=/tmp/shuffled_full.txt
+    awk -F' *\\| *' '{print $0}' "$CURRENT_PLAYLIST" | shuf | awk '{print NR ". " $0}' > "$shuffled_full"
+    awk -F' *\\| *' '{print $2}' "$shuffled_full" | tr -d ' ' > /tmp/shuffled_playlist.txt
+
+    echo "Starting shuffled playlist..."
+    start_mpv "/tmp/shuffled_playlist.txt"
+
+    echo "Shuffle order:"
+    awk -F' *\\| *' '{print NR ". " $1}' "$shuffled_full"
+    echo "Use 'music live-status' for live playback display"
+}
+
+live_status() {
+    ensure_player_running
+    echo "Press q to exit live status"
+    echo -e "\033[?25l"
+
+    stty -echo -icanon
+    while true; do
+        if read -t 0.1 -k 1 input && [[ "$input" == "q" ]]; then
+            break
+        fi
+
+        echo -en "\r\033[K\r\033[1A"
+
+        local title=$(get_mpv_property "media-title")
+        local position=$(get_mpv_property "time-pos")
+        local duration=$(get_mpv_property "duration")
+
+        echo -en "\rNow Playing: $title\n"
+
+        if [[ -n "$position" && "$position" != "null" && -n "$duration" && "$duration" != "null" ]]; then
+            printf "\r[%d:%02d / %d:%02d]" $((position/60)) $((position%60)) $((duration/60)) $((duration%60))
+
+            local width=50 progress=$(( (position * width) / duration ))
+            printf " ["
+            for ((i=0; i<width; i++)); do
+                if ((i < progress)); then printf "="
+                elif ((i == progress)); then printf ">"
+                else printf " "
+                fi
+            done
+            printf "]"
+        else
+            echo -en "\r[0:00 / 0:00] [$(printf ' %50s')]"
+        fi
+    done
+    stty echo icanon
+    echo -e "\n\033[?25h"
+}
+
+status() {
+    ensure_player_running
+
+    local pause_status=$(get_mpv_property "pause")
+    [[ "$pause_status" == "null" ]] && {
+        echo "Nothing playing."
+        return
+    }
+
+    local title=$(get_mpv_property "media-title")
+    local position=$(get_mpv_property "time-pos")
+    local duration=$(get_mpv_property "duration")
+    local pause=$(get_mpv_property "pause")
+
+    echo "Track: $title"
+    echo "Status: $([[ "$pause" == "yes" ]] && echo "Paused" || echo "Playing")"
+
+    if [[ -n "$position" && "$position" != "null" ]]; then
+        printf "Position: %d:%02d\n" $((position/60)) $((position%60))
+    else
+        echo "Position: 0:00"
+    fi
+
+    if [[ -n "$duration" && "$duration" != "null" ]]; then
+        printf "Duration: %d:%02d\n" $((duration/60)) $((duration%60))
+    else
+        echo "Duration: Unknown"
+    fi
+}
+
+next_song() {
+    ensure_player_running
+    echo '{"command": ["playlist-next"]}' | socat - "$SOCKET_PATH" >/dev/null
+    sleep 0.1
+    status
+}
+
+previous_song() {
+    ensure_player_running
+    echo '{"command": ["playlist-prev"]}' | socat - "$SOCKET_PATH" >/dev/null
+    sleep 0.1
+    status
+}
+
+seek() {
+    local amount="$1"
+    [[ -z "$amount" ]] && {
+        echo "Usage: music seek +/-N or mm:ss"
+        return 1
+    }
+
+    ensure_player_running
+
+    if [[ "$amount" =~ ^[0-9]+:[0-9]+$ ]]; then
+        local minutes=${amount%:*} seconds=${amount#*:}
+        local total_seconds=$((minutes * 60 + seconds))
+        echo "{\"command\": [\"seek\", $total_seconds, \"absolute\"]}" | socat - "$SOCKET_PATH" >/dev/null
+    else
+        echo "{\"command\": [\"seek\", \"$amount\"]}" | socat - "$SOCKET_PATH" >/dev/null
+    fi
+
+    sleep 0.1
+    status
+}
+
+seek_forward() {
+    seek "+30"
+    echo "Forward 30s"
+}
+
+seek_backward() {
+    seek "-30"
+    echo "Back 30s"
+}
+
+toggle_play_pause() {
+    ensure_player_running
+    echo '{"command": ["cycle", "pause"]}' | socat - "$SOCKET_PATH" >/dev/null
+    echo "Play/Pause toggled"
+}
+
+adjust_volume() {
+    local change="$1"
+    ensure_player_running
+    echo "{\"command\": [\"add\", \"volume\", $change]}" | socat - "$SOCKET_PATH" >/dev/null
+    echo "Volume adjusted by $change"
+}
+
+stop_playback() {
+    if pgrep -f "mpv.*$SOCKET_PATH" >/dev/null; then
+        pkill -f "mpv.*$SOCKET_PATH"
+        echo "Playback stopped"
+        return 0
+    fi
+    return 1
+}
+
+quick_help() {
+    cat << 'EOF'
+Quick Commands:
+  music switch PATH    - Switch playlist (.txt) (Persistent)
+  music play NUM/LABEL  - Play song
+  music next/prev      - Next/Previous song
+  music toggle         - Toggle Play/Pause
+  music status         - Current track status
+  music live-status    - Live progress bar
+  music list           - List songs
+  music forward/back   - Forward/Back 30s
+  music shuffle        - Shuffle play
+  music help           - Full help
+EOF
+}
+
+help() {
+    cat << 'EOF'
+Music Player Commands:
+
+**First Step:** `music switch PATH` to select playlist. **Persistent**.
+
+Playlist Management:
+  music switch PATH       - Switch playlist. Full path to .txt.
+                            e.g., `music switch path/to/playlist.txt`
+                            Format: .txt files, each line `Label | URL`.
+                            Selection is saved and restored.
+
+Playback Control:
+  music play NUMBER      - Play song by number from playlist
+  music play 'LABEL'     - Play song by label search
+  music playall          - Play entire playlist
+  music shuffle          - Shuffle playlist and play
+  music next             - Next song
+  music prev             - Previous song
+  music toggle           - Toggle play/pause
+  music stop             - Stop playback
+
+Navigation:
+  music seek +/-N        - Seek N seconds (e.g., +30, -10)
+  music seek mm:ss       - Seek to timestamp (e.g., 01:30)
+  music forward          - Forward 30 seconds
+  music back             - Back 30 seconds
+
+Status & Info:
+  music status           - Show current track info (single output)
+  music live-status      - Live progress bar (press 'q' to exit)
+  music list             - List songs in current playlist
+
+Volume Control:
+  music volume +/-N      - Adjust volume (e.g., +10, -5)
+
+Tips:
+- `music switch PATH` is the first command to use. Playlist is remembered.
+- Playlists: .txt files, `Label | URL` per line.
+- `music live-status`: Live progress, exit with 'q'.
+- Song labels in `music play 'LABEL'` allow partial matches.
+
+Examples:
+  music switch my_music.txt     # Switch playlist (persistent)
+  music list                    # List songs in playlist
+  music play 3                  # Play song #3
+  music play "song title part"   # Play song by title
+  music shuffle                 # Shuffle playlist
+  music seek 1:30               # Seek to 1m 30s
+  music seek +30                # Forward 30s
+  music live-status             # Live progress display
+  music status                  # Current track status
+  music volume +10             # Increase volume
+  music help                    # Show this help
+EOF
+}
+
+main() {
+    check_dependencies || return 1
+
+    case "$1" in
+        "switch")        switch_playlist "$2" ;;
+        "play")          [[ "$2" == "all" ]] && play_playlist || play_song "$2" ;;
+        "next")          next_song ;;
+        "prev")          previous_song ;;
+        "toggle")        toggle_play_pause ;;
+        "status")        status ;;
+        "live-status")   live_status ;;
+        "list"|"songs")  list_songs ;;
+        "forward")       seek_forward ;;
+        "back")          seek_backward ;;
+        "seek")          seek "$2" ;;
+        "shuffle")       shuffle_play ;;
+        "volume")        adjust_volume "$2" ;;
+        "stop")          stop_playback ;;
+        "help")          help ;;
+        "quickhelp")     quick_help ;;
+        *)              echo "Unknown command: $1"; quick_help; return 1 ;;
+    esac
+}
+
+main "$@"

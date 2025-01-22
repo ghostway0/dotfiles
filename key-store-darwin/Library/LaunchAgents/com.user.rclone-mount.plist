@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.user.rclone-mount</string>
+  <key>WorkingDirectory</key>
+  <string>/Users/ofek</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/rclone</string>
+    <string>mount</string>
+    <string>backblaze:key-store</string>
+    <string>.key-store</string>
+    <string>--dir-cache-time</string>
+    <string>72h</string>
+    <string>--poll-interval</string>
+    <string>15m</string>
+    <string>--vfs-cache-mode</string>
+    <string>writes</string>
+    <string>--vfs-cache-max-age</string>
+    <string>72h</string>
+    <string>--vfs-cache-max-size</string>
+    <string>100M</string>
+    <string>--vfs-read-chunk-size</string>
+    <string>128M</string>
+    <string>--vfs-read-chunk-size-limit</string>
+    <string>off</string>
+    <string>-vv</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>RCLONE_CONFIG</key>
+    <string>.config/rclone/rclone.conf</string>
+  </dict>
+  <key>KeepAlive</key>
+  <true/>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardErrorPath</key>
+  <string>/tmp/com.user.rclone-mount.stderr</string>
+  <key>StandardOutPath</key>
+  <string>/tmp/com.user.rclone-mount.stdout</string>
+</dict>
+</plist>

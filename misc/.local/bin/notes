@@ -1,0 +1,3 @@
+#!/bin/bash
+
+nvim ~/projects/mka2/life/diary/$(date '+%Y-%m-%d').txt

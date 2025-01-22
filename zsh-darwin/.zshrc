@@ -42,3 +42,6 @@ bindkey '^R' history-incremental-search-backward
 alias send_keystore='rclone sync ~/.key-store/ backblaze:key-store'
 alias recv_keystore='rclone sync backblaze:key-store ~/.key-store/'
 alias hash_keystore='~/.cargo/bin/paq ~/.key-store'
+
+export CC=$(brew --prefix llvm)/bin/clang
+export CXX=$(brew --prefix llvm)/bin/clang++

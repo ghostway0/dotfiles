@@ -20,7 +20,8 @@ require("lazy").setup({
     'folke/todo-comments.nvim',
     'tpope/vim-sleuth',
 
-    {'jbyuki/nabla.nvim'},
+    { 'jbyuki/nabla.nvim' },
+    { 'synaptiko/xit.nvim' },
 
     {
         'neovim/nvim-lspconfig',
@@ -35,15 +36,6 @@ require("lazy").setup({
     { 'tpope/vim-fugitive' },
     { 'lewis6991/gitsigns.nvim' },
 
-    {'Myzel394/easytables.nvim'},
-
-
-    {
-        'jakobkhansen/journal.nvim',
-        config = function()
-            require("journal").setup()
-        end,
-    },
 
     { 'catppuccin/nvim',                     name = 'catppuccin' },
     { 'nvim-telescope/telescope-bibtex.nvim' },
@@ -124,11 +116,11 @@ require('indent-o-matic').setup {
     skip_multiline = true,
 }
 
+require('xit').setup()
+
 require('todo-comments').setup {}
 
 require 'gitsigns'.setup({})
-
-require("easytables").setup {}
 
 vim.cmd.colorscheme("catppuccin")
 
@@ -330,7 +322,6 @@ vim.api.nvim_set_keymap('n', 'tn', ':tabNext<CR>', { noremap = true, silent = tr
 vim.api.nvim_set_keymap('n', 'tc', ':tabclose<CR>', { noremap = true, silent = true })
 
 vim.api.nvim_set_keymap('n', '<leader>gc', ':e ~/.config/nvim/init.lua<CR>', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<leader>sj', ':e ~/projects/journal/journal.md<CR>', { noremap = true, silent = true })
 
 local on_attach = function(_, bufnr)
     local nmap = function(keys, func, desc)
@@ -399,7 +390,17 @@ require('lspconfig.configs').superhtml = {
     }
 }
 
+require('lspconfig.configs').beancount = {
+    default_config = {
+        name = 'beancount',
+        cmd = { 'beancount-language-server' },
+        filetypes = { 'beancount' },
+        root_dir = require('lspconfig.util').root_pattern('.git')
+    }
+}
+
 require 'lsp-zero'.configure('superhtml', { force_setup = true, cmd = { '/Users/ofek/sw/zine/zig-out/bin/server' }, })
+require 'lsp-zero'.configure('beancount', { force_setup = true, cmd = { 'beancount-language-server' }, })
 
 local servers = {
     clangd = { settings = {} },
@@ -412,6 +413,7 @@ local servers = {
     glsl_ls = {
         filetypes = { 'glsl', 'vert', 'frag', 'geom', 'comp', 'tesc', 'tese' }
     },
+    beancount_language_server = { filetypes = { 'beancount' }, cmd = { 'beancount-language-server' }, },
 
     lua_ls = {
         settings = {
@@ -503,3 +505,12 @@ cmp.setup {
         { name = "papis" },
     },
 }
+
+function open_journal()
+    local date_str = os.date("%Y-%m-%d")
+    local file_path = string.format("~/projects/mka2/life/diary/%s.txt", date_str)
+    file_path = vim.fn.expand(file_path)
+    vim.cmd(string.format("edit %s", file_path))
+end
+
+vim.api.nvim_set_keymap("n", "<leader>nj", ":lua open_journal()<CR>", { noremap = true, silent = true })
