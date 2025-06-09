@@ -157,7 +157,7 @@ shuffle_play() {
     start_mpv "/tmp/shuffled_playlist.txt"
 
     echo "Shuffle order:"
-    awk -F' *\\| *' '{print NR ". " $1}' "$shuffled_full"
+    awk -F' *\\| *' '{print $1}' "$shuffled_full"
     echo "Use 'music live-status' for live playback display"
 }
 
