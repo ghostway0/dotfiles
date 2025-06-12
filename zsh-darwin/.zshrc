@@ -16,8 +16,6 @@ bindkey '^[B' backward-word
 
 alias ls='eza -l'
 
-export ZIGUP_BASEDIR=/Users/ofek/.zigup
-export PATH=/Users/ofek/.zigup/current:$PATH
 export PATH=~/.local/bin/:$PATH
 export EDITOR=nvim
 
